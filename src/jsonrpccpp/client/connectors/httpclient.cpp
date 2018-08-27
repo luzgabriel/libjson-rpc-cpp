@@ -52,6 +52,12 @@ void init_string(struct string *s) {
 }
 
 HttpClient::HttpClient(const std::string &url) : url(url) {
+  this->sslcert = "";
+  this->sslkeypwd = "";
+  this->sslkey_type = "";
+  this->ssltrust = "";
+  this->verifyhost = true;
+  this->verifypeer = true;
   this->timeout = 10000;
   curl = curl_easy_init();
 }
@@ -85,6 +91,22 @@ void HttpClient::SendRPCMessage(const std::string &message,
   curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
   curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, timeout);
 
+  if (sslcert != "") {
+    curl_easy_setopt(curl, CURLOPT_SSLCERTTYPE, sslcert_type.c_str());
+    curl_easy_setopt(curl, CURLOPT_SSLCERT, sslcert.c_str());
+  }
+  if (sslkey != "") {
+    curl_easy_setopt(curl, CURLOPT_SSLKEYTYPE, sslkey_type.c_str());
+    curl_easy_setopt(curl, CURLOPT_SSLKEY, sslkey.c_str());
+    if(sslkeypwd != "")
+      curl_easy_setopt(curl, CURLOPT_KEYPASSWD, sslkeypwd.c_str());
+  }
+  if (ssltrust != "")
+    curl_easy_setopt(curl, CURLOPT_CAINFO, ssltrust.c_str());
+
+  curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, verifyhost ? 2L : 0L);
+  curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, verifypeer ? 1L : 0L);
+
   res = curl_easy_perform(curl);
 
   result = s.ptr;
@@ -93,6 +115,7 @@ void HttpClient::SendRPCMessage(const std::string &message,
   if (res != CURLE_OK) {
     std::stringstream str;
     str << "libcurl error: " << res;
+    str << " -> " << curl_easy_strerror(res);
 
     if (res == 7)
       str << " -> Could not connect to " << this->url;
@@ -110,6 +133,22 @@ void HttpClient::SendRPCMessage(const std::string &message,
 }
 
 void HttpClient::SetUrl(const std::string &url) { this->url = url; }
+
+void HttpClient::SetSSLKey(const std::string &sslkey, 
+  const std::string &sslkeypwd, const std::string &sslkey_type) 
+  { this->sslkey = sslkey; this->sslkeypwd = sslkeypwd; this->sslkey_type = sslkey_type; }
+
+void HttpClient::SetSSLCert(const std::string &sslcert, 
+  const std::string &sslcert_type) { this->sslcert = sslcert; 
+  this->sslcert_type = sslcert_type; }
+
+void HttpClient::SetSSLTrust(const std::string &ssltrust) { 
+  this->ssltrust = ssltrust; }
+
+void HttpClient::SetVerifyHost(bool verifyhost) { this->verifyhost = verifyhost; }
+
+void HttpClient::SetVerifyPeer(bool verifypeer) { this->verifypeer = verifypeer; }
+
 
 void HttpClient::SetTimeout(long timeout) { this->timeout = timeout; }
 
